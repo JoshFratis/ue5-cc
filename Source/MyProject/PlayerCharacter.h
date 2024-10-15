@@ -14,11 +14,7 @@ UCLASS()
 class MYPROJECT_API APlayerCharacter : public ACharacter
 {
 	GENERATED_BODY()
-
-public:
-	// Sets default values for this character's properties
-	APlayerCharacter();
-
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -43,6 +39,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	class UInputAction* SlideInputAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Movement: Sprinting")
+	float MaxWalkSpeedSprinting;
+	float MaxWalkSpeedBase;
+
 	void Move(const FInputActionInstance& Instance);
 	void Look(const FInputActionInstance& Instance);
 	virtual void Jump() override;
@@ -53,6 +53,9 @@ protected:
 	void SlideEnd();
 
 public:	
+	// Sets default values for this character's properties
+	APlayerCharacter();
+	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 

@@ -34,6 +34,7 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	MaxWalkSpeedBase = GetCharacterMovement()->MaxWalkSpeed;
 }
 
 void APlayerCharacter::Move(const FInputActionInstance& Instance)
@@ -84,13 +85,13 @@ void APlayerCharacter::StopJumping()
 void APlayerCharacter::SprintStart()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Sprint Start"));
-	
+	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedSprinting;
 }
 
-void APlayerCharacter::SprintEnd()
+void APlayerCharacter::SprintEnd() 
 {
 	UE_LOG(LogTemp, Warning, TEXT("Sprint End"));
-	
+	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedBase;
 }
 
 void APlayerCharacter::SlideStart()
