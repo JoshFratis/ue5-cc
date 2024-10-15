@@ -1,14 +1,19 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "PlayerCharacter.h"
+
+#include "CustomCharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Math/UnitConversion.h"
 
 // Sets default values
-APlayerCharacter::APlayerCharacter()
+APlayerCharacter::APlayerCharacter(const FObjectInitializer& ObjectInitializer)
+ : Super(ObjectInitializer.SetDefaultSubobjectClass<UCustomCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
+	CustomCharacterMovementComponent = Cast<UCustomCharacterMovementComponent>(GetCharacterMovement());
+	
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -40,7 +45,7 @@ void APlayerCharacter::BeginPlay()
 void APlayerCharacter::Move(const FInputActionInstance& Instance)
 {
 	const FVector2D Value = Instance.GetValue().Get<FVector2D>();
-	UE_LOG(LogTemp, Warning, TEXT("Move Input %f, %f"), Value.X, Value.Y);
+	// UE_LOG(LogTemp, Warning, TEXT("Move Input %f, %f"), Value.X, Value.Y);
 
 	if (Controller != nullptr && Value != FVector2d(0.0f, 0.0f))
 	{
@@ -53,7 +58,7 @@ void APlayerCharacter::Move(const FInputActionInstance& Instance)
 		const FVector YDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		AddMovementInput(YDirection, Value.Y);
 
-		UE_LOG(LogTemp, Warning, TEXT("Move Direction %f, %f, %f, %f"), XDirection.X, XDirection.Y, YDirection.X, YDirection.Y);
+		// UE_LOG(LogTemp, Warning, TEXT("Move Direction %f, %f, %f, %f"), XDirection.X, XDirection.Y, YDirection.X, YDirection.Y);
 	}
 	
 }
@@ -61,7 +66,7 @@ void APlayerCharacter::Move(const FInputActionInstance& Instance)
 void APlayerCharacter::Look(const FInputActionInstance& Instance)
 {
 	const FVector2D Value = Instance.GetValue().Get<FVector2D>();
-	UE_LOG(LogTemp, Warning, TEXT("Look Input %f, %f"), Value.X, Value.Y);
+	// UE_LOG(LogTemp, Warning, TEXT("Look Input %f, %f"), Value.X, Value.Y);
 
 	if (Controller != nullptr && Value != FVector2d(0.0f, 0.0f))
 	{
@@ -104,6 +109,12 @@ void APlayerCharacter::SlideEnd()
 	UE_LOG(LogTemp, Warning, TEXT("Slide End"));
 }
 
+void APlayerCharacter::Dash()
+{
+	if (CustomCharacterMovementComponent->CanDash())
+		CustomCharacterMovementComponent->PerformDash();
+}
+
 // Called every frame
 void APlayerCharacter::Tick(float DeltaTime)
 {
@@ -126,6 +137,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	Input->BindAction(SprintInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::SprintEnd);
 	Input->BindAction(SlideInputAction, ETriggerEvent::Started, this, &APlayerCharacter::SlideStart);
 	Input->BindAction(SlideInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::SlideEnd);
+	Input->BindAction(DashInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::Dash);
 
 	// Add Input Mapping Context
 	bool success = false;

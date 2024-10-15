@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MyProject.h"
 #include "GameFramework/Character.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
@@ -18,7 +19,9 @@ class MYPROJECT_API APlayerCharacter : public ACharacter
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	FVector GetInputValue(FInputActionInstance& Instance);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	class UCustomCharacterMovementComponent* CustomCharacterMovementComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintreadWrite)
 	class USpringArmComponent* SpringArmComponent;
@@ -38,11 +41,14 @@ protected:
 	class UInputAction* SprintInputAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	class UInputAction* SlideInputAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* DashInputAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Movement: Sprinting")
 	float MaxWalkSpeedSprinting;
+	
 	float MaxWalkSpeedBase;
-
+	
 	void Move(const FInputActionInstance& Instance);
 	void Look(const FInputActionInstance& Instance);
 	virtual void Jump() override;
@@ -51,10 +57,11 @@ protected:
 	void SprintEnd();
 	void SlideStart();
 	void SlideEnd();
+	void Dash();
 
 public:	
 	// Sets default values for this character's properties
-	APlayerCharacter();
+	APlayerCharacter(const FObjectInitializer& ObjectInitializer);
 	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
