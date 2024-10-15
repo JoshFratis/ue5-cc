@@ -39,7 +39,7 @@ void APlayerCharacter::BeginPlay()
 void APlayerCharacter::Move(const FInputActionInstance& Instance)
 {
 	const FVector2D Value = Instance.GetValue().Get<FVector2D>();
-	UE_LOG(LogTemp, Warning, TEXT("Input %f, %f"), Value.X, Value.Y);
+	UE_LOG(LogTemp, Warning, TEXT("Move Input %f, %f"), Value.X, Value.Y);
 
 	if (Controller != nullptr && Value != FVector2d(0.0f, 0.0f))
 	{
@@ -52,9 +52,55 @@ void APlayerCharacter::Move(const FInputActionInstance& Instance)
 		const FVector YDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		AddMovementInput(YDirection, Value.Y);
 
-		UE_LOG(LogTemp, Warning, TEXT("Direction %f, %f, %f, %f"), XDirection.X, XDirection.Y, YDirection.X, YDirection.Y);
+		UE_LOG(LogTemp, Warning, TEXT("Move Direction %f, %f, %f, %f"), XDirection.X, XDirection.Y, YDirection.X, YDirection.Y);
 	}
 	
+}
+
+void APlayerCharacter::Look(const FInputActionInstance& Instance)
+{
+	const FVector2D Value = Instance.GetValue().Get<FVector2D>();
+	UE_LOG(LogTemp, Warning, TEXT("Look Input %f, %f"), Value.X, Value.Y);
+
+	if (Controller != nullptr && Value != FVector2d(0.0f, 0.0f))
+	{
+		AddControllerYawInput(Value.X);
+		AddControllerPitchInput(Value.Y);
+	}
+}
+
+void APlayerCharacter::Jump()
+{
+	Super::Jump();
+	UE_LOG(LogTemp, Warning, TEXT("Jump"));
+}
+
+void APlayerCharacter::StopJumping()
+{
+	Super::StopJumping();
+	UE_LOG(LogTemp, Warning, TEXT("Stop Jumping"));
+}
+
+void APlayerCharacter::SprintStart()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Sprint Start"));
+	
+}
+
+void APlayerCharacter::SprintEnd()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Sprint End"));
+	
+}
+
+void APlayerCharacter::SlideStart()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Slide Start"));
+}
+
+void APlayerCharacter::SlideEnd()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Slide End"));
 }
 
 // Called every frame
@@ -72,6 +118,13 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	// Bind Actions
 	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	Input->BindAction(MoveInputAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
+	Input->BindAction(LookInputAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
+	Input->BindAction(JumpInputAction, ETriggerEvent::Started, this, &APlayerCharacter::Jump);
+	Input->BindAction(JumpInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopJumping);
+	Input->BindAction(SprintInputAction, ETriggerEvent::Started, this, &APlayerCharacter::SprintStart);
+	Input->BindAction(SprintInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::SprintEnd);
+	Input->BindAction(SlideInputAction, ETriggerEvent::Started, this, &APlayerCharacter::SlideStart);
+	Input->BindAction(SlideInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::SlideEnd);
 
 	// Add Input Mapping Context
 	bool success = false;
@@ -86,6 +139,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 			}
 		}
 	}
+	
 	if (!success) UE_LOG(LogTemp, Warning, TEXT("Successfully set up Player Input Component"));
 }
 

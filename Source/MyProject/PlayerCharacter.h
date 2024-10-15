@@ -22,6 +22,7 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	FVector GetInputValue(FInputActionInstance& Instance);
 
 	UPROPERTY(VisibleAnywhere, BlueprintreadWrite)
 	class USpringArmComponent* SpringArmComponent;
@@ -31,11 +32,25 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category="Input")
 	TSoftObjectPtr<UInputMappingContext> InputMapping;
-	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	class UInputAction* MoveInputAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* LookInputAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* JumpInputAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* SprintInputAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* SlideInputAction;
 
 	void Move(const FInputActionInstance& Instance);
+	void Look(const FInputActionInstance& Instance);
+	virtual void Jump() override;
+	virtual void StopJumping() override;
+	void SprintStart();
+	void SprintEnd();
+	void SlideStart();
+	void SlideEnd();
 
 public:	
 	// Called every frame
