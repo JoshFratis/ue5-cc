@@ -17,23 +17,15 @@ class MYPROJECT_API APlayerCharacter : public ACharacter
 	GENERATED_BODY()
 	
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// Components Config
 	UPROPERTY(VisibleAnywhere, BlueprintreadWrite)
 	class USpringArmComponent* SpringArmComponent;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class UCameraComponent* CameraComponent;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
-	class UCustomCharacterMovementComponent* CustomCharacterMovementComponent;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
-	float LedgeGrabForwardReach;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
-	float LedgeGrabOverheadReach;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
-	float LedgeGrabVelocity;
-
+	// Input Config
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	TSoftObjectPtr<UInputMappingContext> InputMapping;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
@@ -48,11 +40,34 @@ protected:
 	class UInputAction* SlideInputAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	class UInputAction* DashInputAction;
+	
+	// Custom Movement Config
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	class UCustomCharacterMovementComponent* CustomCharacterMovementComponent;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float LedgeGrabForwardReach;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float LedgeGrabOverheadReach;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float LedgeGrabVelocity;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float WallRunReach;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float WallJumpImpulseUp;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float WallJumpImpulseAway;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Movement: Sprinting")
 	float MaxWalkSpeedSprinting;
-	
+
+	// Stored Constants
 	float MaxWalkSpeedBase;
+
+	// State Data
+	bool IsSprinting;
+	bool IsWallRunning;
+	
+	FVector ToWallRun;
 	
 	void Move(const FInputActionInstance& Instance);
 	void Look(const FInputActionInstance& Instance);

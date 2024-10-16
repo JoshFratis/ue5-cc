@@ -79,16 +79,18 @@ void APlayerCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	// Ledge Grab
+	const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	const FVector CameraFlatForward = CameraComponent->GetForwardVector().GetSafeNormal2D();
+	const FVector HeadPosition = GetActorLocation() + (FVector::UpVector * HalfHeight);
+	
 	if (!CustomCharacterMovementComponent->IsMovingOnGround())
 	{
-		const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-		const FVector CameraFlatForward = CameraComponent->GetForwardVector().GetSafeNormal2D();
-		const FVector HeadPosition = GetActorLocation() + (CameraFlatForward * LedgeGrabForwardReach) + (FVector::UpVector * HalfHeight);
-		const FVector GrabPosition = HeadPosition + (FVector::UpVector * LedgeGrabOverheadReach);
+		const FVector ForwardHeadPosition = HeadPosition + (CameraFlatForward * LedgeGrabForwardReach);
+		const FVector GrabPosition = ForwardHeadPosition + (FVector::UpVector * LedgeGrabOverheadReach);
 	
 		FHitResult LedgeHit;
 		const FVector LedgeTraceStart = GrabPosition + (FVector::UpVector * 10.0f); // Trace begins above grab position so we can check if there exists open space above (a ledge, not a wall). 
-		const FVector LedgeTraceEnd = HeadPosition + (FVector::DownVector * (HalfHeight * 2.0 - CustomCharacterMovementComponent->MaxStepHeight)); // Trace extends down to height at which character can step up onto ledge. Velocity override persists until no collision exists.
+		const FVector LedgeTraceEnd = ForwardHeadPosition + (FVector::DownVector * (HalfHeight * 2.0 - CustomCharacterMovementComponent->MaxStepHeight)); // Trace extends down to height at which character can step up onto ledge. Velocity override persists until no collision exists.
 		
 		FHitResult CeilingHit;
 		const FVector CeilingTraceStart = GetActorLocation() + FVector::UpVector * HalfHeight;
@@ -108,7 +110,43 @@ void APlayerCharacter::Tick(float DeltaTime)
 		
 		// DrawDebugLine(GetWorld(), TraceStart, TraceEnd, success ? FColor::Blue : FColor::Red);
 		// DrawDebugLine(GetWorld(), TraceStart + (FVector::UpVector * 10000), TraceStart, success ? FColor::Green : FColor::Purple);
-	} 
+	}
+
+	// Wall Run
+	IsWallRunning = false;
+	if (!CustomCharacterMovementComponent->IsMovingOnGround() && IsSprinting)
+	{
+		FHitResult LeftHit;
+		FHitResult RightHit;
+		FVector TraceStart = GetActorLocation();
+		FVector LeftTraceEnd = TraceStart - (CameraComponent->GetRightVector().GetSafeNormal2D() * WallRunReach); // currently straight left / right, may need to be a 45
+		FVector RightTraceEnd = TraceStart + (CameraComponent->GetRightVector().GetSafeNormal2D() * WallRunReach);
+		
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(this);
+
+		GetWorld()->LineTraceSingleByChannel(LeftHit, TraceStart, LeftTraceEnd, ECC_WorldStatic, QueryParams);
+		GetWorld()->LineTraceSingleByChannel(RightHit, TraceStart, RightTraceEnd, ECC_WorldStatic, QueryParams);
+		// DrawDebugLine(GetWorld(), TraceStart, LeftTraceEnd, FColor::Red);
+		// DrawDebugLine(GetWorld(), TraceStart, RightTraceEnd + (CameraFlatForward * 10000), FColor::Red);
+
+		if (LeftHit.bBlockingHit && IsValid(LeftHit.GetActor()))
+		{
+			IsWallRunning = true;
+			ToWallRun = (LeftHit.ImpactPoint - GetActorLocation()).GetSafeNormal2D();
+		}
+		else if (RightHit.bBlockingHit && IsValid(RightHit.GetActor()))
+		{
+			IsWallRunning = true;
+			ToWallRun = (RightHit.ImpactPoint - GetActorLocation()).GetSafeNormal2D();
+			
+		}
+
+		if (IsWallRunning)
+		{
+			CustomCharacterMovementComponent->Velocity.Z = std::max(CustomCharacterMovementComponent->Velocity.Z, 0.0);
+		}
+	}
 }
 
 void APlayerCharacter::Move(const FInputActionInstance& Instance)
@@ -146,8 +184,19 @@ void APlayerCharacter::Look(const FInputActionInstance& Instance)
 
 void APlayerCharacter::Jump()
 {
-	Super::Jump();
-	UE_LOG(LogTemp, Warning, TEXT("Jump"));
+	if (IsWallRunning)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Wall Jump"));
+		const FVector WallJumpImpulse = (-ToWallRun * WallJumpImpulseAway) + (FVector::UpVector * WallJumpImpulseUp);
+		CustomCharacterMovementComponent->AddImpulse(WallJumpImpulse, true);
+		DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + WallJumpImpulse, FColor::Red, false, 10.0f);
+		UE_LOG(LogTemp, Log, TEXT("Wall Jump Vector: %ls"), *WallJumpImpulse.ToCompactString());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Jump"));
+		Super::Jump();
+	}
 }
 
 void APlayerCharacter::StopJumping()
@@ -159,12 +208,14 @@ void APlayerCharacter::StopJumping()
 void APlayerCharacter::SprintStart() 
 {
 	UE_LOG(LogTemp, Warning, TEXT("Sprint Start"));
+	IsSprinting = true;
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedSprinting;
 }
 
 void APlayerCharacter::SprintEnd() 
 {
 	UE_LOG(LogTemp, Warning, TEXT("Sprint End"));
+	IsSprinting = false;
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedBase;
 }
 
