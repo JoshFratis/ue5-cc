@@ -20,16 +20,21 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
-	class UCustomCharacterMovementComponent* CustomCharacterMovementComponent;
-
 	UPROPERTY(VisibleAnywhere, BlueprintreadWrite)
 	class USpringArmComponent* SpringArmComponent;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class UCameraComponent* CameraComponent;
 
-	UPROPERTY(EditAnywhere, Category="Input")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	class UCustomCharacterMovementComponent* CustomCharacterMovementComponent;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float LedgeGrabForwardReach;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float LedgeGrabOverheadReach;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float LedgeGrabVelocity;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	TSoftObjectPtr<UInputMappingContext> InputMapping;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	class UInputAction* MoveInputAction;

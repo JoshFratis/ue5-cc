@@ -4,11 +4,11 @@
 
 #include "CustomCharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Math/UnitConversion.h"
 
-// Sets default values
 APlayerCharacter::APlayerCharacter(const FObjectInitializer& ObjectInitializer)
  : Super(ObjectInitializer.SetDefaultSubobjectClass<UCustomCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
@@ -34,12 +34,81 @@ APlayerCharacter::APlayerCharacter(const FObjectInitializer& ObjectInitializer)
 	GetCharacterMovement()->bIgnoreBaseRotation = true;
 }
 
-// Called when the game starts or when spawned
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	MaxWalkSpeedBase = GetCharacterMovement()->MaxWalkSpeed;
+}
+
+void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	// Bind Actions
+	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	Input->BindAction(MoveInputAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
+	Input->BindAction(LookInputAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
+	Input->BindAction(JumpInputAction, ETriggerEvent::Started, this, &APlayerCharacter::Jump);
+	Input->BindAction(JumpInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopJumping);
+	Input->BindAction(SprintInputAction, ETriggerEvent::Started, this, &APlayerCharacter::SprintStart);
+	Input->BindAction(SprintInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::SprintEnd);
+	Input->BindAction(SlideInputAction, ETriggerEvent::Started, this, &APlayerCharacter::SlideStart);
+	Input->BindAction(SlideInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::SlideEnd);
+	Input->BindAction(DashInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::Dash);
+
+	// Add Input Mapping Context
+	bool success = false;
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* InputSystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			if (!InputMapping.IsNull())
+			{
+				InputSystem->AddMappingContext(InputMapping.LoadSynchronous(), 0);
+				success = true;
+			}
+		}
+	}
+	
+	if (!success) UE_LOG(LogTemp, Warning, TEXT("Successfully set up Player Input Component"));
+}
+
+void APlayerCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	// Ledge Grab
+	if (!CustomCharacterMovementComponent->IsMovingOnGround())
+	{
+		const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		const FVector CameraFlatForward = CameraComponent->GetForwardVector().GetSafeNormal2D();
+		const FVector HeadPosition = GetActorLocation() + (CameraFlatForward * LedgeGrabForwardReach) + (FVector::UpVector * HalfHeight);
+		const FVector GrabPosition = HeadPosition + (FVector::UpVector * LedgeGrabOverheadReach);
+	
+		FHitResult LedgeHit;
+		const FVector LedgeTraceStart = GrabPosition + (FVector::UpVector * 10.0f); // Trace begins above grab position so we can check if there exists open space above (a ledge, not a wall). 
+		const FVector LedgeTraceEnd = HeadPosition + (FVector::DownVector * (HalfHeight * 2.0 - CustomCharacterMovementComponent->MaxStepHeight)); // Trace extends down to height at which character can step up onto ledge. Velocity override persists until no collision exists.
+		
+		FHitResult CeilingHit;
+		const FVector CeilingTraceStart = GetActorLocation() + FVector::UpVector * HalfHeight;
+		const FVector CeilingTraceEnd = CeilingTraceStart + FVector::UpVector * LedgeGrabOverheadReach;
+		
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(this);
+
+		GetWorld()->LineTraceSingleByChannel(LedgeHit, LedgeTraceStart, LedgeTraceEnd, ECC_WorldStatic, QueryParams);
+		GetWorld()->LineTraceSingleByChannel(CeilingHit, CeilingTraceStart, CeilingTraceEnd, ECC_WorldStatic, QueryParams);
+		// DrawDebugLine(GetWorld(), HeadPosition, HeadPosition + (CameraFlatForward * 10000), FColor::Red);
+
+		if (!CeilingHit.bBlockingHit && LedgeHit.bBlockingHit && IsValid(LedgeHit.GetActor()) && LedgeHit.ImpactPoint.Z < GrabPosition.Z)
+		{
+			CustomCharacterMovementComponent->Velocity.Z = LedgeGrabVelocity;
+		} 
+		
+		// DrawDebugLine(GetWorld(), TraceStart, TraceEnd, success ? FColor::Blue : FColor::Red);
+		// DrawDebugLine(GetWorld(), TraceStart + (FVector::UpVector * 10000), TraceStart, success ? FColor::Green : FColor::Purple);
+	} 
 }
 
 void APlayerCharacter::Move(const FInputActionInstance& Instance)
@@ -87,7 +156,7 @@ void APlayerCharacter::StopJumping()
 	UE_LOG(LogTemp, Warning, TEXT("Stop Jumping"));
 }
 
-void APlayerCharacter::SprintStart()
+void APlayerCharacter::SprintStart() 
 {
 	UE_LOG(LogTemp, Warning, TEXT("Sprint Start"));
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedSprinting;
@@ -99,6 +168,12 @@ void APlayerCharacter::SprintEnd()
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedBase;
 }
 
+void APlayerCharacter::Dash() 
+{
+	if (CustomCharacterMovementComponent->CanDash())
+		CustomCharacterMovementComponent->PerformDash();
+}
+
 void APlayerCharacter::SlideStart()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Slide Start"));
@@ -107,52 +182,5 @@ void APlayerCharacter::SlideStart()
 void APlayerCharacter::SlideEnd()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Slide End"));
-}
-
-void APlayerCharacter::Dash()
-{
-	if (CustomCharacterMovementComponent->CanDash())
-		CustomCharacterMovementComponent->PerformDash();
-}
-
-// Called every frame
-void APlayerCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
-
-// Called to bind functionality to input
-void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	// Bind Actions
-	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-	Input->BindAction(MoveInputAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
-	Input->BindAction(LookInputAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
-	Input->BindAction(JumpInputAction, ETriggerEvent::Started, this, &APlayerCharacter::Jump);
-	Input->BindAction(JumpInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopJumping);
-	Input->BindAction(SprintInputAction, ETriggerEvent::Started, this, &APlayerCharacter::SprintStart);
-	Input->BindAction(SprintInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::SprintEnd);
-	Input->BindAction(SlideInputAction, ETriggerEvent::Started, this, &APlayerCharacter::SlideStart);
-	Input->BindAction(SlideInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::SlideEnd);
-	Input->BindAction(DashInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::Dash);
-
-	// Add Input Mapping Context
-	bool success = false;
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* InputSystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-		{
-			if (!InputMapping.IsNull())
-			{
-				InputSystem->AddMappingContext(InputMapping.LoadSynchronous(), 0);
-				success = true;
-			}
-		}
-	}
-	
-	if (!success) UE_LOG(LogTemp, Warning, TEXT("Successfully set up Player Input Component"));
 }
 
