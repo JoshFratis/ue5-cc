@@ -64,11 +64,16 @@ protected:
 	float MaxWalkSpeedBase;
 
 	// State Data
+	bool IsMoving;
 	bool IsSprinting;
 	bool IsWallRunning;
 	
-	FVector ToWallRun;
+	bool CanWallJump;
 	
+	FVector ToWallRun;
+
+	void MoveStart();
+	void MoveEnd();
 	void Move(const FInputActionInstance& Instance);
 	void Look(const FInputActionInstance& Instance);
 	virtual void Jump() override;

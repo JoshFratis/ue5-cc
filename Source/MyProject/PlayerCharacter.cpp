@@ -48,6 +48,8 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	// Bind Actions
 	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	Input->BindAction(MoveInputAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
+	Input->BindAction(MoveInputAction, ETriggerEvent::Started, this, &APlayerCharacter::MoveStart);
+	Input->BindAction(MoveInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::MoveEnd);
 	Input->BindAction(LookInputAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
 	Input->BindAction(JumpInputAction, ETriggerEvent::Started, this, &APlayerCharacter::Jump);
 	Input->BindAction(JumpInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopJumping);
@@ -113,8 +115,10 @@ void APlayerCharacter::Tick(float DeltaTime)
 	}
 
 	// Wall Run
+	CanWallJump = false;
 	IsWallRunning = false;
-	if (!CustomCharacterMovementComponent->IsMovingOnGround() && IsSprinting)
+	
+	if (!CustomCharacterMovementComponent->IsMovingOnGround())
 	{
 		FHitResult LeftHit;
 		FHitResult RightHit;
@@ -132,21 +136,31 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 		if (LeftHit.bBlockingHit && IsValid(LeftHit.GetActor()))
 		{
-			IsWallRunning = true;
+			CanWallJump = true;
 			ToWallRun = (LeftHit.ImpactPoint - GetActorLocation()).GetSafeNormal2D();
 		}
 		else if (RightHit.bBlockingHit && IsValid(RightHit.GetActor()))
 		{
-			IsWallRunning = true;
+			CanWallJump = true;
 			ToWallRun = (RightHit.ImpactPoint - GetActorLocation()).GetSafeNormal2D();
-			
 		}
 
-		if (IsWallRunning)
+		if (CanWallJump && IsSprinting && IsMoving)
 		{
+			IsWallRunning = true;
 			CustomCharacterMovementComponent->Velocity.Z = std::max(CustomCharacterMovementComponent->Velocity.Z, 0.0);
 		}
 	}
+}
+
+void APlayerCharacter::MoveStart()
+{
+	IsMoving = true;
+}
+
+void APlayerCharacter::MoveEnd()
+{
+	IsMoving = false;
 }
 
 void APlayerCharacter::Move(const FInputActionInstance& Instance)
@@ -167,7 +181,6 @@ void APlayerCharacter::Move(const FInputActionInstance& Instance)
 
 		// UE_LOG(LogTemp, Warning, TEXT("Move Direction %f, %f, %f, %f"), XDirection.X, XDirection.Y, YDirection.X, YDirection.Y);
 	}
-	
 }
 
 void APlayerCharacter::Look(const FInputActionInstance& Instance)
@@ -184,7 +197,7 @@ void APlayerCharacter::Look(const FInputActionInstance& Instance)
 
 void APlayerCharacter::Jump()
 {
-	if (IsWallRunning)
+	if (CanWallJump)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Wall Jump"));
 		const FVector WallJumpImpulse = (-ToWallRun * WallJumpImpulseAway) + (FVector::UpVector * WallJumpImpulseUp);
