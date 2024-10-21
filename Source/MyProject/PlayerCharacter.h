@@ -40,6 +40,8 @@ protected:
 	class UInputAction* SlideInputAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	class UInputAction* DashInputAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* DilateTimeAction;
 	
 	// Custom Movement Config
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
@@ -59,9 +61,15 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Movement: Sprinting")
 	float MaxWalkSpeedSprinting;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Time Dilation")
+	float TimeDilationScale;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Time Dilation")
+	float TimeDilationMin;
 
 	// Stored Constants
 	float MaxWalkSpeedBase;
+	float TimeDilation = 1.0f;
 
 	// State Data
 	bool IsMoving;
@@ -83,6 +91,7 @@ protected:
 	void SlideStart();
 	void SlideEnd();
 	void Dash();
+	void DilateTime(const FInputActionInstance& Instance);
 
 public:	
 	// Sets default values for this character's properties

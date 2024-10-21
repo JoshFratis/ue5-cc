@@ -7,6 +7,7 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Math/UnitConversion.h"
 
 APlayerCharacter::APlayerCharacter(const FObjectInitializer& ObjectInitializer)
@@ -58,6 +59,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	Input->BindAction(SlideInputAction, ETriggerEvent::Started, this, &APlayerCharacter::SlideStart);
 	Input->BindAction(SlideInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::SlideEnd);
 	Input->BindAction(DashInputAction, ETriggerEvent::Completed, this, &APlayerCharacter::Dash);
+	Input->BindAction(DilateTimeAction, ETriggerEvent::Triggered, this, &APlayerCharacter::DilateTime);
 
 	// Add Input Mapping Context
 	bool success = false;
@@ -236,6 +238,19 @@ void APlayerCharacter::Dash()
 {
 	if (CustomCharacterMovementComponent->CanDash())
 		CustomCharacterMovementComponent->PerformDash();
+}
+
+void APlayerCharacter::DilateTime(const FInputActionInstance& Instance)
+{
+	const float Value = Instance.GetValue().Get<float>();
+	UE_LOG(LogTemp, Warning, TEXT("Got %f from scroll wheel"), Value);
+
+	if (Controller != nullptr && Value != 0.0f)
+	{
+		TimeDilation = FMath::Clamp(TimeDilation + (Value * TimeDilationScale), TimeDilationMin, 1.0f);
+		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), TimeDilation);
+		UE_LOG(LogTemp, Warning, TEXT("Changing game speed by %f. Time dilation %f"), Value * TimeDilationScale, TimeDilation);
+	}
 }
 
 void APlayerCharacter::SlideStart()
