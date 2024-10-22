@@ -46,6 +46,7 @@ protected:
 	// Custom Movement Config
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
 	class UCustomCharacterMovementComponent* CustomCharacterMovementComponent;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
 	float LedgeGrabForwardReach;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
@@ -75,10 +76,12 @@ protected:
 	bool IsMoving;
 	bool IsSprinting;
 	bool IsWallRunning;
-	
+	bool IsSliding;
 	bool CanWallJump;
-	
+
+	FVector2D MoveInput;
 	FVector ToWallRun;
+	FVector SlideVector;
 
 	void MoveStart();
 	void MoveEnd();
