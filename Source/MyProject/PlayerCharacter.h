@@ -68,8 +68,21 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Time Dilation")
 	float TimeDilationMin;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	float SlideImpulse; // Not yet implemented. 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	float SlideDeceleration;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	float SlideSpeedSlopeModifier;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	float GroundFrictionSliding; // Currently doesn't do anything because you never change direction while you're sliding. But might after implementing slight strafing. 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	float BrakingDecelerationSliding; // Currently doesn't do anything because you're always moving while you're sliding. But might after implementing slight strafing. 
+
 	// Stored Constants
 	float MaxWalkSpeedBase;
+	float GroundFrictionBase;
 	float TimeDilation = 1.0f;
 
 	// State Data

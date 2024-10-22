@@ -40,6 +40,7 @@ void APlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 	
 	MaxWalkSpeedBase = CustomCharacterMovementComponent->MaxWalkSpeed;
+	GroundFrictionBase = CustomCharacterMovementComponent->GroundFriction;
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -84,39 +85,35 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 	if (IsSliding)
 	{
-		// apply deceleration to slide vector
-		float NewSlideVectorLength = SlideVector.Length() - 0.1f; // TODO: slide deceleration
+		float NewSlideVectorLength = SlideVector.Length() - SlideDeceleration; 
 		SlideVector = SlideVector.GetSafeNormal() * NewSlideVectorLength;
 		
-		// get current floor normal
 		FHitResult FloorHit;
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(this);
 		
-		const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 		FVector Start = GetActorLocation();
-		FVector End = GetActorLocation() + FVector::DownVector * (HalfHeight * 1.5f);
+		FVector End = GetActorLocation() + FVector::DownVector * (GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 1.5f);
 		
 		GetWorld()->LineTraceSingleByChannel(FloorHit, Start, End, ECC_WorldStatic, QueryParams);
 		// DrawDebugLine(GetWorld(), Start, End, FColor::Red, true, 5.0f);
-		DrawDebugLine(GetWorld(), Start, Start + SlideVector.GetSafeNormal() * 100, FColor::Yellow, true, 5.0f);
+		// DrawDebugLine(GetWorld(), Start, Start + SlideVector.GetSafeNormal() * 100, FColor::Yellow, true, 5.0f);
 		if (FloorHit.bBlockingHit && IsValid(FloorHit.GetActor()))
 		{
-			UE_LOG(LogTemp, Log, TEXT("Floor Normal: %ls"), *FloorHit.ImpactNormal.ToCompactString())
-			DrawDebugLine(GetWorld(), FloorHit.ImpactPoint, FloorHit.ImpactPoint + FloorHit.ImpactNormal * 100, FColor::Blue, true, 5.0f);
-
+			// DrawDebugLine(GetWorld(), FloorHit.ImpactPoint, FloorHit.ImpactPoint + FloorHit.ImpactNormal * 100, FColor::Blue, true, 5.0f);
 			FVector SlopeDirection = FloorHit.ImpactNormal.GetSafeNormal2D();
-			UE_LOG(LogTemp, Log, TEXT("Slope Degrees: %ls"), *SlopeDirection.ToCompactString());
-			SlideVector += SlopeDirection * 100.0f; // TODO: SlideSpeedSlopeModifier
+			SlideVector += SlopeDirection * SlideSpeedSlopeModifier;
 		}
-		else 
-			UE_LOG(LogTemp, Log, TEXT("No hit"));
 
-		
-		// gravity should already be applied
-		// use CustomCharacterMovement->SlideAlongSurface() if necessary
+		CustomCharacterMovementComponent->Velocity = SlideVector;
 
-		AddMovementInput(SlideVector.GetSafeNormal(), SlideVector.Length());
+		// TODO: Add gravity to sliding.
+		// TODO: Add an initial impulse to sliding. 
+		// TODO: Try using CustomCharacterMovementComponent->SlideAlongSurface() to slide along surfaces. Use a vector tangent to the floor to exclude it from sliding.
+		// TODO: Figure out how to maintain speed gained by sliding after exiting slide.
+		// TODO: Lower camera and capsule while sliding.
+		// TODO: Add slight strafing control. Mess with movement config to achieve a slide-y feeling, even if it's produced by simulated input.
+		// TODO: Allow jumping while sliding. 
 	}
 	else
 	{
@@ -306,17 +303,20 @@ void APlayerCharacter::DilateTime(const FInputActionInstance& Instance)
 
 void APlayerCharacter::SlideStart()
 {
-	if (!CustomCharacterMovementComponent->CanSlide())
+	if (!CustomCharacterMovementComponent->IsMovingOnGround())
 		return;
 
 	SlideVector = CustomCharacterMovementComponent->Velocity;
+	CustomCharacterMovementComponent->BrakingFriction = BrakingDecelerationSliding;
+	CustomCharacterMovementComponent->BrakingFriction = GroundFrictionSliding;
+	
 	IsSliding = true;
-	CustomCharacterMovementComponent->EnterSlide();
 }
 
 void APlayerCharacter::SlideEnd()
 {
+	CustomCharacterMovementComponent->BrakingFriction = CustomCharacterMovementComponent->BrakingDecelerationWalking;
+	CustomCharacterMovementComponent->GroundFriction = GroundFrictionBase;
+	
 	IsSliding = false;
-	CustomCharacterMovementComponent->ExitSlide();
 }
-
