@@ -42,6 +42,7 @@ void APlayerCharacter::BeginPlay()
 
 	MaxWalkSpeedBase = CustomCharacterMovementComponent->MaxWalkSpeed;
 	GroundFrictionBase = CustomCharacterMovementComponent->GroundFriction;
+	BrakingDecelerationBase = CustomCharacterMovementComponent->BrakingDecelerationWalking;
 	MaxMovementInputSpeed = MaxWalkSpeedBase;
 }
 
@@ -117,19 +118,17 @@ void APlayerCharacter::Tick(float DeltaTime)
 	}
 
 	// Apply Slide Velocity
-	const float SlideVectorScaleValue = SlideVector.Length() / MaxWalkSpeedSliding * SlideMovementMagnitude;
+	const float SlideVectorMagnitude = SlideVector.Length() / MaxWalkSpeedSliding;
+	const float SlideVectorScaleValue = SlideVectorMagnitude * SlideMovementInputScale;
 	AddMovementInput(SlideVector.GetSafeNormal(), SlideVectorScaleValue); 
 
 	// Apply Slide Deceleration
 	SlideVector = SlideVector.GetSafeNormal() * FMath::Max(0, SlideVector.Length() - (IsSliding ? SlideDeceleration : SlideExitDeceleration));;
 
-	// Remove Slidy Physics
-	if (SlideVector.Length() <= 0) // TODO: lerp instead of hard switch ? 
-	{
-		CustomCharacterMovementComponent->BrakingFriction = CustomCharacterMovementComponent->BrakingDecelerationWalking;
-		CustomCharacterMovementComponent->GroundFriction = GroundFrictionBase;
-		GetCharacterMovement()->MaxWalkSpeed = MaxMovementInputSpeed;
-	}
+	// Lerp Between Slidy + Standard Physics
+	CustomCharacterMovementComponent->BrakingDecelerationWalking	= FMath::Lerp(BrakingDecelerationBase,BrakingDecelerationSliding,SlideVectorMagnitude);
+	CustomCharacterMovementComponent->GroundFriction				= FMath::Lerp(GroundFrictionBase,		GroundFrictionSliding,	SlideVectorMagnitude);
+	CustomCharacterMovementComponent->MaxWalkSpeed					= FMath::Lerp(MaxMovementInputSpeed,	MaxWalkSpeedSliding,		SlideVectorMagnitude);
 
 	// Apply Movement Input
 	if (Controller != nullptr && MoveInput != FVector2d(0.0f, 0.0f))
@@ -137,19 +136,34 @@ void APlayerCharacter::Tick(float DeltaTime)
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-		// Only allow forward movement if not sliding
 		const FVector XDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		const float MoveInputXClamp = !IsSliding && CustomCharacterMovementComponent->Velocity.Length() <= MaxMovementInputSpeed ? 1.0f : 0.0f;
-		const float MoveInputX = FMath::Clamp(MoveInput.X, -1.0f, MoveInputXClamp);
-		AddMovementInput(XDirection, MoveInputX);
-		
 		const FVector YDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		const float MoveInputYClamp = IsSliding ? SlideVectorScaleValue : 1.0f;
-		const float MoveInputY = FMath::Clamp(MoveInput.Y, -MoveInputYClamp, MoveInputYClamp);
-		AddMovementInput(YDirection, MoveInputY);
+		
+		float MoveScaleX = 1.0f;
+		float MoveScaleY = 1.0f;
+		
+		// Strafe while sliding. Input is scaled by slide vector if perpendicular, zeroed if parallel. 
+		if (IsSliding || CustomCharacterMovementComponent->Velocity.Length() > MaxMovementInputSpeed)
+		{
+			const float PercentXParallelToSlide = FMath::Abs( 
+			 FMath::Acos(FVector::DotProduct(XDirection * MoveInput.X, SlideVector.GetSafeNormal2D())) // angle between slide vector and movement input vector
+			 - (PI / 2)) / ( PI / 2); // transform into % parallel 
+			const float PercentYParallelToSlide = FMath::Abs( 
+			 FMath::Acos(FVector::DotProduct(YDirection * MoveInput.Y, SlideVector.GetSafeNormal2D())) 
+			 - (PI / 2)) / ( PI / 2); 
+			
+			const float SlideVectorScaleValueClamped = FMath::Min(SlideVector.Length(), MaxMovementInputSpeed) / MaxWalkSpeedSliding * SlideMovementInputScale;
+			MoveScaleX = FMath::Lerp(SlideVectorScaleValueClamped, 0, PercentXParallelToSlide);
+			MoveScaleY = FMath::Lerp(SlideVectorScaleValueClamped, 0, PercentYParallelToSlide);
+		}
+
+		// Apply Movement Input
+		AddMovementInput(XDirection, MoveInput.X * MoveScaleX);
+		AddMovementInput(YDirection, MoveInput.Y * MoveScaleY);
 	}
 
 	// Ledge Grab
+	// TODO: stick player move directions relative to grabbed ledge normal so you can't slide off ledge by holding W
 	const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	const FVector CameraFlatForward = CameraComponent->GetForwardVector().GetSafeNormal2D();
 	const FVector HeadPosition = GetActorLocation() + (FVector::UpVector * HalfHeight);
@@ -230,7 +244,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 		}
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("Slide %f\tVelocity %f"), SlideVector.Length(), CustomCharacterMovementComponent->Velocity.Length());
+	// UE_LOG(LogTemp, Log, TEXT("Slide %f\tVelocity %f"), SlideVector.Length(), CustomCharacterMovementComponent->Velocity.Length());
 }
 
 void APlayerCharacter::MoveStart()
@@ -339,7 +353,7 @@ void APlayerCharacter::SlideStart()
 	}
 
 	// Set slidy physics 
-	CustomCharacterMovementComponent->BrakingFriction = BrakingDecelerationSliding;
+	CustomCharacterMovementComponent->BrakingDecelerationWalking = BrakingDecelerationSliding;
 	CustomCharacterMovementComponent->BrakingFriction = GroundFrictionSliding;
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedSliding;
 

@@ -71,7 +71,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float SlideImpulse; // Not yet implemented. 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
-	float SlideMovementMagnitude; 
+	float SlideMovementInputScale; 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float SlideDeceleration;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
@@ -89,6 +89,7 @@ protected:
 	// Stored Constants
 	float MaxWalkSpeedBase;
 	float MaxMovementInputSpeed;
+	float BrakingDecelerationBase;
 	float GroundFrictionBase;
 	float TimeDilation = 1.0f;
 
