@@ -88,6 +88,7 @@ protected:
 
 	// Stored Constants
 	float MaxWalkSpeedBase;
+	float MaxMovementInputSpeed;
 	float GroundFrictionBase;
 	float TimeDilation = 1.0f;
 

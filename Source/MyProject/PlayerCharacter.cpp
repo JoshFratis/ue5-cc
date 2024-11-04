@@ -42,6 +42,7 @@ void APlayerCharacter::BeginPlay()
 
 	MaxWalkSpeedBase = CustomCharacterMovementComponent->MaxWalkSpeed;
 	GroundFrictionBase = CustomCharacterMovementComponent->GroundFriction;
+	MaxMovementInputSpeed = MaxWalkSpeedBase;
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -85,6 +86,10 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (IsSprinting)
+		IsSliding = false;
+
+	// Slide down slopes
 	if (IsSliding)
 	{
 		FHitResult FloorHit;
@@ -100,7 +105,6 @@ void APlayerCharacter::Tick(float DeltaTime)
 			FVector SlopeDirection = FloorHit.ImpactNormal.GetSafeNormal2D();
 			SlideVector += SlopeDirection * SlideSpeedSlopeModifier;
 			
-			UE_LOG(LogTemp, Log, TEXT("Slide Vector Length: %f"), SlideVector.Length());
 			DrawDebugLine(GetWorld(),
 			              Start, Start + (SlopeDirection * 100),
 			              FColor::Blue, false, 1.0f);
@@ -109,65 +113,41 @@ void APlayerCharacter::Tick(float DeltaTime)
 			              FColor::Cyan, false, 1.0f);
 		}
 
-		// CustomCharacterMovementComponent->Velocity = SlideVector;
-		// CustomCharacterMovementComponent->Velocity = SlideVector.GetClampedToMaxSize(MaxWalkSpeedSliding);
-		// CustomCharacterMovementComponent->Velocity = (CustomCharacterMovementComponent->Velocity + SlideVector).GetClampedToMaxSize(MaxWalkSpeedSliding);
-
-
-		// TODO: Add gravity to sliding.
-		// TODO: Try using CustomCharacterMovementComponent->SlideAlongSurface() to slide along surfaces. Use a vector tangent to the floor to exclude it from sliding.
-		// TODO: maintain speed gained by sliding after exiting slide.
-
 		// TODO: Lower camera and capsule while sliding.
-		// TODO: Add slight strafing control. Mess with movement config to achieve a slide-y feeling, even if it's produced by simulated input.
-		// TODO: Allow jumping while sliding. 
 	}
 
-	// Slide
-	AddMovementInput(SlideVector.GetSafeNormal(), SlideVector.Length() / MaxWalkSpeedSliding * SlideMovementMagnitude); // TODO: divide by movement speed ? 
+	// Apply Slide Velocity
+	const float SlideVectorScaleValue = SlideVector.Length() / MaxWalkSpeedSliding * SlideMovementMagnitude;
+	AddMovementInput(SlideVector.GetSafeNormal(), SlideVectorScaleValue); 
 
 	// Apply Slide Deceleration
-	float NewSlideVectorLength = FMath::Max(0, SlideVector.Length() - (IsSliding ? SlideDeceleration : SlideExitDeceleration));
-	SlideVector = SlideVector.GetSafeNormal() * NewSlideVectorLength;
-	if (NewSlideVectorLength <= 0) // TODO: lerp instead of hard switch ? 
-	{
-		CustomCharacterMovementComponent->BrakingFriction = CustomCharacterMovementComponent-> BrakingDecelerationWalking;
-		CustomCharacterMovementComponent->GroundFriction = GroundFrictionBase;
-		GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedBase;
-	}
-	// float NewMoveVectorLength = FMath::Clamp(CustomCharacterMovementComponent->Velocity.Length(), 0, MaxWalkSpeedSliding - NewSlideVectorLength);
-	// CustomCharacterMovementComponent->Velocity = SlideVector + (CustomCharacterMovementComponent->Velocity. GetSafeNormal() * NewMoveVectorLength);
-	// UE_LOG(LogTemp, Log, TEXT("Slide %f\tMove %f\tVelocity %f"), NewSlideVectorLength, NewMoveVectorLength, CustomCharacterMovementComponent->Velocity.Length());
-	// UE_LOG(LogTemp, Log, TEXT("Slide %f\tVelocity %f"), NewSlideVectorLength, CustomCharacterMovementComponent->Velocity.Length());
+	SlideVector = SlideVector.GetSafeNormal() * FMath::Max(0, SlideVector.Length() - (IsSliding ? SlideDeceleration : SlideExitDeceleration));;
 
-	// Move
+	// Remove Slidy Physics
+	if (SlideVector.Length() <= 0) // TODO: lerp instead of hard switch ? 
+	{
+		CustomCharacterMovementComponent->BrakingFriction = CustomCharacterMovementComponent->BrakingDecelerationWalking;
+		CustomCharacterMovementComponent->GroundFriction = GroundFrictionBase;
+		GetCharacterMovement()->MaxWalkSpeed = MaxMovementInputSpeed;
+	}
+
+	// Apply Movement Input
 	if (Controller != nullptr && MoveInput != FVector2d(0.0f, 0.0f))
 	{
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
+		// Only allow forward movement if not sliding
 		const FVector XDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		if (!IsSliding)
-		{
-			AddMovementInput(XDirection, MoveInput.X);
-		}
-
+		const float MoveInputXClamp = !IsSliding && CustomCharacterMovementComponent->Velocity.Length() <= MaxMovementInputSpeed ? 1.0f : 0.0f;
+		const float MoveInputX = FMath::Clamp(MoveInput.X, -1.0f, MoveInputXClamp);
+		AddMovementInput(XDirection, MoveInputX);
+		
 		const FVector YDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		const float MoveInputAllowed = IsSliding ? SlideVector.Length() / MaxWalkSpeedSliding * SlideMovementMagnitude : 1.0f;
-		const float MoveInputY = FMath::Clamp(MoveInput.Y, -MoveInputAllowed, MoveInputAllowed);
+		const float MoveInputYClamp = IsSliding ? SlideVectorScaleValue : 1.0f;
+		const float MoveInputY = FMath::Clamp(MoveInput.Y, -MoveInputYClamp, MoveInputYClamp);
 		AddMovementInput(YDirection, MoveInputY);
-
-		// UE_LOG(LogTemp, Warning, TEXT("Move Direction %f, %f, %f, %f"), XDirection.X, XDirection.Y, YDirection.X, YDirection.Y);
-		// UE_LOG(LogTemp, Warning, TEXT("Move Input %f, %f"), MoveInput.X, MoveInput.Y);
 	}
-
-	if (IsSliding)
-	{
-		UE_LOG(LogTemp, Log, TEXT("Slide TRUE %f\tVelocity %f"), SlideVector.Length(),
-		       CustomCharacterMovementComponent->Velocity.Length());
-	}
-	else UE_LOG(LogTemp, Log, TEXT("Slide FALSE %f\tVelocity %f"), SlideVector.Length(),
-	            CustomCharacterMovementComponent->Velocity.Length())	;
 
 	// Ledge Grab
 	const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
@@ -250,6 +230,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 		}
 	}
 
+	UE_LOG(LogTemp, Log, TEXT("Slide %f\tVelocity %f"), SlideVector.Length(), CustomCharacterMovementComponent->Velocity.Length());
 }
 
 void APlayerCharacter::MoveStart()
@@ -310,6 +291,7 @@ void APlayerCharacter::SprintStart()
 	// UE_LOG(LogTemp, Warning, TEXT("Sprint Start"));
 	IsSprinting = true;
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedSprinting;
+	MaxMovementInputSpeed = MaxWalkSpeedSprinting;
 }
 
 void APlayerCharacter::SprintEnd()
@@ -317,6 +299,7 @@ void APlayerCharacter::SprintEnd()
 	// UE_LOG(LogTemp, Warning, TEXT("Sprint End"));
 	IsSprinting = false;
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedBase;
+	MaxMovementInputSpeed = MaxWalkSpeedBase;
 }
 
 void APlayerCharacter::Dash()
@@ -340,13 +323,22 @@ void APlayerCharacter::DilateTime(const FInputActionInstance& Instance)
 
 void APlayerCharacter::SlideStart()
 {
-	if (!CustomCharacterMovementComponent->IsMovingOnGround())
-		return;
+	// if (!CustomCharacterMovementComponent->IsMovingOnGround())
+	// 	return;
 
-	const FVector SlideImpulseDirection = CustomCharacterMovementComponent->GetCurrentAcceleration().GetSafeNormal2D();
-	SlideVector = CustomCharacterMovementComponent->Velocity + (SlideImpulse * SlideImpulseDirection);
-	// UE_LOG(LogTemp, Log, TEXT("Slide Vector Length: %f"), SlideVector.Length());
+	// Maintain velocity with small impulse
+	if (CustomCharacterMovementComponent->Velocity.Length() < MaxWalkSpeedBase + SlideImpulse)
+	{
+		SlideVector =
+			CustomCharacterMovementComponent->Velocity.GetClampedToMaxSize(MaxWalkSpeedBase) +
+			(SlideImpulse * CustomCharacterMovementComponent->GetCurrentAcceleration().GetSafeNormal2D());
+	}
+	else
+	{
+		SlideVector = CustomCharacterMovementComponent->Velocity;
+	}
 
+	// Set slidy physics 
 	CustomCharacterMovementComponent->BrakingFriction = BrakingDecelerationSliding;
 	CustomCharacterMovementComponent->BrakingFriction = GroundFrictionSliding;
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedSliding;
@@ -356,9 +348,5 @@ void APlayerCharacter::SlideStart()
 
 void APlayerCharacter::SlideEnd()
 {
-	// CustomCharacterMovementComponent->BrakingFriction = CustomCharacterMovementComponent->BrakingDecelerationWalking;
-	// CustomCharacterMovementComponent->GroundFriction = GroundFrictionBase;
-	// GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedBase;
-
 	IsSliding = false;
 }
