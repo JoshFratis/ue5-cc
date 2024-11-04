@@ -71,9 +71,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float SlideImpulse; // Not yet implemented. 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	float SlideMovementMagnitude; 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float SlideDeceleration;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	float SlideExitDeceleration;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float SlideSpeedSlopeModifier;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	float MaxWalkSpeedSliding;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float GroundFrictionSliding; // Currently doesn't do anything because you never change direction while you're sliding. But might after implementing slight strafing. 

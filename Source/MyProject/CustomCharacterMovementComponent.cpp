@@ -9,7 +9,7 @@ void UCustomCharacterMovementComponent::PerformDash()
 {
 	DashStartTime = GetWorld()->GetTimeSeconds();
 
-	const FVector DashDirection = (Acceleration.IsNearlyZero() ? UpdatedComponent->GetForwardVector() : Acceleration).GetSafeNormal2D();
+	const FVector DashDirection = GetDashDirection();
 	const FVector NewVelocity = DashImpulse * (DashDirection + FVector::UpVector * 0.1f);
 	
 	UE_LOG(LogTemp, Warning, TEXT("Velocity (%3f, %f, %3f) -> (%3f, %f, %3f)"), Velocity.X, Velocity.Y, Velocity.Z, NewVelocity.X, NewVelocity.Y, NewVelocity.Z);
@@ -28,4 +28,9 @@ void UCustomCharacterMovementComponent::PerformDash()
 	SetMovementMode(MOVE_Falling);
 	
 	// UE_LOG(LogTemp, Warning, TEXT("Velocity: %f, %f, %f"), NewVelocity.X, NewVelocity.Y, NewVelocity.Z);
+}
+
+FVector UCustomCharacterMovementComponent::GetDashDirection() const
+{
+	return (Acceleration.IsNearlyZero() ? UpdatedComponent->GetForwardVector() : Acceleration).GetSafeNormal2D();
 }

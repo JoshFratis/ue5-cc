@@ -23,4 +23,5 @@ protected:
 public:
 	bool CanDash() const;
 	void PerformDash();
+	FVector GetDashDirection() const;
 };
