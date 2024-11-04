@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "PlayerCharacter.h"
 
 #include "CustomCharacterMovementComponent.h"
@@ -8,7 +6,6 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Math/UnitConversion.h"
 
 APlayerCharacter::APlayerCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UCustomCharacterMovementComponent>(
@@ -44,6 +41,9 @@ void APlayerCharacter::BeginPlay()
 	GroundFrictionBase = CustomCharacterMovementComponent->GroundFriction;
 	BrakingDecelerationBase = CustomCharacterMovementComponent->BrakingDecelerationWalking;
 	MaxMovementInputSpeed = MaxWalkSpeedBase;
+	
+	CameraSpringArmHeightBase = SpringArmComponent->GetComponentLocation().Z - GetActorLocation().Z;
+	CapsuleHalfHeightBase = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -106,24 +106,34 @@ void APlayerCharacter::Tick(float DeltaTime)
 			FVector SlopeDirection = FloorHit.ImpactNormal.GetSafeNormal2D();
 			SlideVector += SlopeDirection * SlideSpeedSlopeModifier;
 			
-			DrawDebugLine(GetWorld(),
-			              Start, Start + (SlopeDirection * 100),
-			              FColor::Blue, false, 1.0f);
-			DrawDebugLine(GetWorld(),
-			              Start, Start + SlideVector,
-			              FColor::Cyan, false, 1.0f);
+			// DrawDebugLine(GetWorld(), Start, Start + (SlopeDirection * 100), FColor::Blue, false, 1.0f);
+			// DrawDebugLine(GetWorld(), Start, Start + SlideVector, FColor::Cyan, false, 1.0f);
 		}
-
-		// TODO: Lower camera and capsule while sliding.
 	}
 
+	// Set Camera Height
+	// FVector CameraLocation = SpringArmComponent->GetComponentLocation();
+	// float CameraHeight = CameraLocation.Z;
+	// float TargetCameraHeight = GetActorLocation().Z + (IsSliding ? CameraHeightSliding : CameraSpringArmHeightBase);
+	// float NewCameraHeight = FMath::FInterpConstantTo(CameraHeight, TargetCameraHeight, GetWorld()->GetDeltaSeconds(),
+	//                                                  CameraHeightChangeSpeed);
+	// SpringArmComponent->SetWorldLocation(FVector(CameraLocation.X, CameraLocation.Y, NewCameraHeight));
+
+	// Set Capsule Height
+	GetCapsuleComponent()->SetCapsuleHalfHeight(FMath::FInterpConstantTo(GetCapsuleComponent()->GetScaledCapsuleHalfHeight(),
+	                                                                (IsSliding
+		                                                                 ? CapsuleHalfHeightSliding
+		                                                                 : CapsuleHalfHeightBase),
+	                                                                GetWorld()->GetDeltaSeconds(),
+	                                                                CameraHeightChangeSpeed));
+	
 	// Apply Slide Velocity
 	const float SlideVectorMagnitude = SlideVector.Length() / MaxWalkSpeedSliding;
 	const float SlideVectorScaleValue = SlideVectorMagnitude * SlideMovementInputScale;
 	AddMovementInput(SlideVector.GetSafeNormal(), SlideVectorScaleValue); 
 
 	// Apply Slide Deceleration
-	SlideVector = SlideVector.GetSafeNormal() * FMath::Max(0, SlideVector.Length() - (IsSliding ? SlideDeceleration : SlideExitDeceleration));;
+	SlideVector = SlideVector.GetSafeNormal() * FMath::Max(0, SlideVector.Length() - (IsSliding ? SlideDeceleration : SlideExitDeceleration));
 
 	// Lerp Between Slidy + Standard Physics
 	CustomCharacterMovementComponent->BrakingDecelerationWalking	= FMath::Lerp(BrakingDecelerationBase,BrakingDecelerationSliding,SlideVectorMagnitude);
@@ -284,7 +294,7 @@ void APlayerCharacter::Jump()
 		// UE_LOG(LogTemp, Warning, TEXT("Wall Jump"));
 		const FVector WallJumpImpulse = (-ToWallRun * WallJumpImpulseAway) + (FVector::UpVector * WallJumpImpulseUp);
 		CustomCharacterMovementComponent->AddImpulse(WallJumpImpulse, true);
-		DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + WallJumpImpulse, FColor::Red, false, 10.0f);
+		// DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + WallJumpImpulse, FColor::Red, false, 10.0f);
 		// UE_LOG(LogTemp, Log, TEXT("Wall Jump Vector: %ls"), *WallJumpImpulse.ToCompactString());
 	}
 	else
@@ -343,9 +353,8 @@ void APlayerCharacter::SlideStart()
 	// Maintain velocity with small impulse
 	if (CustomCharacterMovementComponent->Velocity.Length() < MaxWalkSpeedBase + SlideImpulse)
 	{
-		SlideVector =
-			CustomCharacterMovementComponent->Velocity.GetClampedToMaxSize(MaxWalkSpeedBase) +
-			(SlideImpulse * CustomCharacterMovementComponent->GetCurrentAcceleration().GetSafeNormal2D());
+		SlideVector = CustomCharacterMovementComponent->Velocity.GetClampedToMaxSize(MaxWalkSpeedBase) + (
+			SlideImpulse * CustomCharacterMovementComponent->GetCurrentAcceleration().GetSafeNormal2D());
 	}
 	else
 	{

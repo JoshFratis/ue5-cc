@@ -80,6 +80,13 @@ protected:
 	float SlideSpeedSlopeModifier;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float MaxWalkSpeedSliding;
+	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	// float CameraHeightSliding;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
+	float CapsuleHalfHeightSliding;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
+	float CameraHeightChangeSpeed;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float GroundFrictionSliding; // Currently doesn't do anything because you never change direction while you're sliding. But might after implementing slight strafing. 
@@ -91,6 +98,8 @@ protected:
 	float MaxMovementInputSpeed;
 	float BrakingDecelerationBase;
 	float GroundFrictionBase;
+	float CameraSpringArmHeightBase;
+	float CapsuleHalfHeightBase;
 	float TimeDilation = 1.0f;
 
 	// State Data
