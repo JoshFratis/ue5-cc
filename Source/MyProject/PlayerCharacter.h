@@ -41,7 +41,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	class UInputAction* DashInputAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
-	class UInputAction* DilateTimeAction;
+	class UInputAction* DilateTimeInputAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* EngageInputAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* StrikeInputAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* DisengageInputAction;
 	
 	// Custom Movement Config
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement")
@@ -91,7 +97,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float GroundFrictionSliding; // Currently doesn't do anything because you never change direction while you're sliding. But might after implementing slight strafing. 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
-	float BrakingDecelerationSliding; // Currently doesn't do anything because you're always moving while you're sliding. But might after implementing slight strafing. 
+	float BrakingDecelerationSliding; // Currently doesn't do anything because you're always moving while you're sliding. But might after implementing slight strafing.
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
+	float EngagementDistance; 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
+	float StrafeSpeed; 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
+	float StrafeRotationExtent; 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
+	float StrafeRotationSpeed; 
 
 	// Stored Constants
 	float MaxWalkSpeedBase;
@@ -101,8 +116,10 @@ protected:
 	float CameraSpringArmHeightBase;
 	float CapsuleHalfHeightBase;
 	float TimeDilation = 1.0f;
+	float InputYawScale;
 
 	// State Data
+	bool IsEngaged;
 	bool IsMoving;
 	bool IsSprinting;
 	bool IsWallRunning;
@@ -112,19 +129,27 @@ protected:
 	FVector2D MoveInput;
 	FVector ToWallRun;
 	FVector SlideVector;
+	FVector EngagementCharacterLocation;
+	FVector EngagementTargetLocation;
 
-	void MoveStart();
-	void MoveEnd();
 	void Move(const FInputActionInstance& Instance);
 	void Look(const FInputActionInstance& Instance);
 	virtual void Jump() override;
 	virtual void StopJumping() override;
+	
+	void MoveStart();
+	void MoveEnd();
 	void SprintStart();
 	void SprintEnd();
 	void SlideStart();
 	void SlideEnd();
+	
 	void Dash();
 	void DilateTime(const FInputActionInstance& Instance);
+	
+	void Engage();
+	void Strike();
+	void Disengage();
 
 public:	
 	// Sets default values for this character's properties
