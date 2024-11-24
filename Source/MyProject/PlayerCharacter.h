@@ -103,10 +103,10 @@ protected:
 	float EngagementDistance; 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
 	float StrafeSpeed; 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
-	float StrafeRotationExtent; 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
-	float StrafeRotationSpeed; 
+	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
+	// float StrafeRotationExtent; 
+	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
+	// float StrafeRotationSpeed; 
 
 	// Stored Constants
 	float MaxWalkSpeedBase;

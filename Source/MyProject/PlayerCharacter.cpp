@@ -314,15 +314,13 @@ void APlayerCharacter::Move(const FInputActionInstance& Instance)
 
 void APlayerCharacter::Look(const FInputActionInstance& Instance)
 {
-	if (IsEngaged)
-		return;
-	
 	const FVector2D Value = Instance.GetValue().Get<FVector2D>();
 	UE_LOG(LogTemp, Warning, TEXT("Look Input %f, %f"), Value.X, Value.Y);
 
 	if (Controller != nullptr && Value != FVector2d(0.0f, 0.0f))
 	{
-		AddControllerYawInput(Value.X);
+		if (!IsEngaged)
+            AddControllerYawInput(Value.X);
 		AddControllerPitchInput(Value.Y);
 	}
 }
