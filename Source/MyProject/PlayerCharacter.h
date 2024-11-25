@@ -100,6 +100,8 @@ protected:
 	float BrakingDecelerationSliding; // Currently doesn't do anything because you're always moving while you're sliding. But might after implementing slight strafing.
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee")
+	float MeleeMaxEngageDistance;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee")
 	float MeleeDistance; 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee")
 	float MeleeSpeed; 
@@ -107,6 +109,9 @@ protected:
 	float MaxWalkSpeedMelee; 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee")
 	float MeleeStrafeDistance;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee")
+	TSubclassOf<AActor> EnemyClass;
 
 	// Stored Constants
 	float MaxWalkSpeedBase;

@@ -193,13 +193,14 @@ void APlayerCharacter::Tick(float DeltaTime)
                 MoveScaleX = 0.0f;
 				
 				YDirection = EngagementStrafeVector;
-				MoveScaleY = FVector::Distance(GetActorLocation() + (YDirection * MoveInput.Y), EngagementCharacterLocation) < MeleeStrafeDistance ?
-					MeleeSpeed :
-					0.0f;
+				// MoveScaleY = FVector::Distance(GetActorLocation() + (YDirection * MoveInput.Y * 2.0f), EngagementCharacterLocation) < MeleeStrafeDistance ?
+				// 	MeleeSpeed :
+				// 	0.0f;
+				MoveScaleY = MeleeSpeed;
 				
-				DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementTargetLocation, FColor::Yellow);
-				DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementCharacterLocation + EngagementVector, FColor::Blue);
-				DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementCharacterLocation + EngagementStrafeVector, FColor::Red);
+				// DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementTargetLocation, FColor::Yellow);
+				// DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementCharacterLocation + EngagementVector, FColor::Blue);
+				// DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementCharacterLocation + EngagementStrafeVector, FColor::Red);
 			}
 
 			// Apply Movement Input
@@ -416,13 +417,55 @@ void APlayerCharacter::DilateTime(const FInputActionInstance& Instance)
 
 void APlayerCharacter::Engage()
 {
-	IsEngaged = true;
-	EngagementCharacterLocation = GetActorLocation();
-	EngagementTargetLocation = GetActorLocation() + (GetActorForwardVector() * MeleeDistance);
-	EngagementVector = EngagementCharacterLocation - EngagementTargetLocation;
-	EngagementStrafeVector = FVector::CrossProduct(EngagementVector, FVector::UpVector);
-	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedMelee;
-	MaxMovementInputSpeed = MaxWalkSpeedMelee;
+	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+	if (!PlayerController) return;
+
+	FVector WorldLocation;
+	FVector WorldDirection;
+	if (!PlayerController->DeprojectScreenPositionToWorld(
+			GEngine->GameViewport->Viewport->GetSizeXY().X / 2,
+			GEngine->GameViewport->Viewport->GetSizeXY().Y / 2,
+			WorldLocation,
+			WorldDirection))
+		return;
+
+	FHitResult HitResult;
+	FVector Start = CameraComponent->GetComponentLocation();
+	FVector End = Start + (WorldDirection * MeleeMaxEngageDistance); // Adjust length as needed
+
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(PlayerController->GetPawn());
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		Start,
+		End,
+		ECC_Visibility,
+		CollisionParams
+	);
+
+	AActor* HitActor = HitResult.GetActor();
+	if (bHit && IsValid(HitActor))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Hit Actor: %s"), *HitActor->GetName());
+
+		if (EnemyClass && HitActor->IsA(EnemyClass))
+		{
+			IsEngaged = true;
+			
+			EngagementTargetLocation = HitResult.Location; // HitActor->GetActorLocation(); // GetActorLocation() + (GetActorForwardVector() * MeleeDistance);
+			EngagementTargetLocation.Z = GetActorLocation().Z;
+			EngagementVector = (GetActorLocation() - EngagementTargetLocation).GetSafeNormal2D();
+			EngagementCharacterLocation = EngagementTargetLocation + (EngagementVector * MeleeDistance);
+			EngagementStrafeVector = FVector::CrossProduct(EngagementVector, FVector::UpVector).GetSafeNormal2D();
+			SetActorLocation(EngagementCharacterLocation);
+			
+			GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedMelee;
+			MaxMovementInputSpeed = MaxWalkSpeedMelee;
+		}
+	}
+
+	DrawDebugLine(GetWorld(), Start, End, FColor::Red);
 }
 
 void APlayerCharacter::Strike()
