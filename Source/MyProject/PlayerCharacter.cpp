@@ -187,11 +187,16 @@ void APlayerCharacter::Tick(float DeltaTime)
 				MoveScaleY = FMath::Lerp(SlideVectorScaleValueClamped, 0, PercentYParallelToSlide);
 			}
 
-			// Constrain Strafing
-			if (IsEngaged)
+			// Constrain strafing while engaged
+			else if (IsEngaged)
 			{
-				XDirection = FVector::ZeroVector;
+                MoveScaleX = 0.0f;
+				
 				YDirection = EngagementStrafeVector;
+				MoveScaleY = FVector::Distance(GetActorLocation() + (YDirection * MoveInput.Y), EngagementCharacterLocation) < MeleeStrafeDistance ?
+					MeleeSpeed :
+					0.0f;
+				
 				DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementTargetLocation, FColor::Yellow);
 				DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementCharacterLocation + EngagementVector, FColor::Blue);
 				DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementCharacterLocation + EngagementStrafeVector, FColor::Red);
@@ -413,9 +418,11 @@ void APlayerCharacter::Engage()
 {
 	IsEngaged = true;
 	EngagementCharacterLocation = GetActorLocation();
-	EngagementTargetLocation = GetActorLocation() + (GetActorForwardVector() * EngagementDistance);
+	EngagementTargetLocation = GetActorLocation() + (GetActorForwardVector() * MeleeDistance);
 	EngagementVector = EngagementCharacterLocation - EngagementTargetLocation;
 	EngagementStrafeVector = FVector::CrossProduct(EngagementVector, FVector::UpVector);
+	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeedMelee;
+	MaxMovementInputSpeed = MaxWalkSpeedMelee;
 }
 
 void APlayerCharacter::Strike()

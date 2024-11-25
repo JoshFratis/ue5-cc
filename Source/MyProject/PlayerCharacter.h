@@ -99,16 +99,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement: Sliding")
 	float BrakingDecelerationSliding; // Currently doesn't do anything because you're always moving while you're sliding. But might after implementing slight strafing.
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
-	float EngagementDistance; 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
-	float StrafeSpeed; 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
-	float StrafeDistance;
-	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
-	// float StrafeRotationExtent; 
-	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
-	// float StrafeRotationSpeed; 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee")
+	float MeleeDistance; 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee")
+	float MeleeSpeed; 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee")
+	float MaxWalkSpeedMelee; 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee")
+	float MeleeStrafeDistance;
 
 	// Stored Constants
 	float MaxWalkSpeedBase;
