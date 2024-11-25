@@ -103,6 +103,8 @@ protected:
 	float EngagementDistance; 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
 	float StrafeSpeed; 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
+	float StrafeDistance;
 	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
 	// float StrafeRotationExtent; 
 	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
@@ -131,6 +133,8 @@ protected:
 	FVector SlideVector;
 	FVector EngagementCharacterLocation;
 	FVector EngagementTargetLocation;
+	FVector EngagementVector;
+	FVector EngagementStrafeVector;
 
 	void Move(const FInputActionInstance& Instance);
 	void Look(const FInputActionInstance& Instance);

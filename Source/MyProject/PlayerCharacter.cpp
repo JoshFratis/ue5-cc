@@ -99,8 +99,14 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!IsEngaged)
+	// if (!IsEngaged)
+	// {
+	if (IsEngaged)
 	{
+		IsSliding = false;
+		IsSprinting = false;
+	}
+	
 		if (IsSprinting)
 			IsSliding = false;
 
@@ -160,8 +166,8 @@ void APlayerCharacter::Tick(float DeltaTime)
 			const FRotator Rotation = Controller->GetControlRotation();
 			const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-			const FVector XDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-			const FVector YDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+			FVector XDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+			FVector YDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 			
 			float MoveScaleX = 1.0f;
 			float MoveScaleY = 1.0f;
@@ -181,8 +187,18 @@ void APlayerCharacter::Tick(float DeltaTime)
 				MoveScaleY = FMath::Lerp(SlideVectorScaleValueClamped, 0, PercentYParallelToSlide);
 			}
 
+			// Constrain Strafing
+			if (IsEngaged)
+			{
+				XDirection = FVector::ZeroVector;
+				YDirection = EngagementStrafeVector;
+				DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementTargetLocation, FColor::Yellow);
+				DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementCharacterLocation + EngagementVector, FColor::Blue);
+				DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementCharacterLocation + EngagementStrafeVector, FColor::Red);
+			}
+
 			// Apply Movement Input
-			AddMovementInput(XDirection, MoveInput.X * MoveScaleX);
+            AddMovementInput(XDirection, MoveInput.X * MoveScaleX);
 			AddMovementInput(YDirection, MoveInput.Y * MoveScaleY);
 		}
 
@@ -269,29 +285,40 @@ void APlayerCharacter::Tick(float DeltaTime)
 		}
 
 	// UE_LOG(LogTemp, Log, TEXT("Slide %f\tVelocity %f"), SlideVector.Length(), CustomCharacterMovementComponent->Velocity.Length());
-	}
-	else if (IsEngaged)
-	{
-		if (MoveInput.Y != 0.0f) {
-			FVector engagementVector = GetActorLocation() - EngagementTargetLocation;
-			FRotator strafeRotation = FRotator(0, -MoveInput.Y * StrafeSpeed, 0);
-			
-			FVector targetPosition = EngagementTargetLocation + (strafeRotation.RotateVector(engagementVector).GetSafeNormal2D() * EngagementDistance);
-			FRotator targetRotation = (EngagementTargetLocation - targetPosition).Rotation();
-			
-			FVector toTargetPosition = targetPosition - GetActorLocation();
-			float toTargetRotation = targetRotation.Yaw - GetActorRotation().Yaw;
-
-			AddMovementInput(toTargetPosition);
-			if (toTargetRotation > 180.0f)
-				toTargetRotation -= 360.0f;
-			
-			AddControllerYawInput(toTargetRotation / InputYawScale);
-
-			DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementTargetLocation, FColor::Red);
-			DrawDebugLine(GetWorld(), EngagementTargetLocation, targetPosition, FColor::Blue);
-		}
-	}
+	// }
+	// else if (IsEngaged)
+	// {
+		// FVector engagementVector = GetActorLocation() - EngagementTargetLocation;
+		// FVector leftVector = FVector::CrossProduct(engagementVector, FVector::UpVector);
+		// DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementCharacterLocation + leftVector, FColor::Blue);
+		//
+		// FVector targetPosition = EngagementCharacterLocation + (MoveInput.Y * leftVector);
+		// FVector toTargetPosition = targetPosition - GetActorLocation();
+		// DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + toTargetPosition, FColor::Red);
+		// if (toTargetPosition.Length() > StrafeSpeed)
+		// 	toTargetPosition = toTargetPosition.GetSafeNormal() * StrafeSpeed;
+		// AddMovementInput(toTargetPosition.GetSafeNormal() * StrafeSpeed);
+		
+		// if (MoveInput.Y != 0.0f) {
+		// 	FVector engagementVector = GetActorLocation() - EngagementTargetLocation;
+		// 	FRotator strafeRotation = FRotator(0, -MoveInput.Y * StrafeSpeed, 0);
+		// 	
+		// 	FVector targetPosition = EngagementTargetLocation + (strafeRotation.RotateVector(engagementVector).GetSafeNormal2D() * EngagementDistance);
+		// 	FRotator targetRotation = (EngagementTargetLocation - targetPosition).Rotation();
+		// 	
+		// 	FVector toTargetPosition = targetPosition - GetActorLocation();
+		// 	float toTargetRotation = targetRotation.Yaw - GetActorRotation().Yaw;
+		//
+		// 	AddMovementInput(toTargetPosition);
+		// 	if (toTargetRotation > 180.0f)
+		// 		toTargetRotation -= 360.0f;
+		// 	
+		// 	AddControllerYawInput(toTargetRotation / InputYawScale);
+		//
+		// 	DrawDebugLine(GetWorld(), EngagementCharacterLocation, EngagementTargetLocation, FColor::Red);
+		// 	DrawDebugLine(GetWorld(), EngagementTargetLocation, targetPosition, FColor::Blue);
+		// }
+	// }
 }
 
 void APlayerCharacter::MoveStart()
@@ -319,8 +346,7 @@ void APlayerCharacter::Look(const FInputActionInstance& Instance)
 
 	if (Controller != nullptr && Value != FVector2d(0.0f, 0.0f))
 	{
-		if (!IsEngaged)
-            AddControllerYawInput(Value.X);
+        AddControllerYawInput(Value.X);
 		AddControllerPitchInput(Value.Y);
 	}
 }
@@ -388,6 +414,8 @@ void APlayerCharacter::Engage()
 	IsEngaged = true;
 	EngagementCharacterLocation = GetActorLocation();
 	EngagementTargetLocation = GetActorLocation() + (GetActorForwardVector() * EngagementDistance);
+	EngagementVector = EngagementCharacterLocation - EngagementTargetLocation;
+	EngagementStrafeVector = FVector::CrossProduct(EngagementVector, FVector::UpVector);
 }
 
 void APlayerCharacter::Strike()
